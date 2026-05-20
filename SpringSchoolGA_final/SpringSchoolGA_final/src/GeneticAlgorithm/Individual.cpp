@@ -71,7 +71,7 @@ const std::shared_ptr<Building> Individual::GetBuilding() const
 	return m_building;
 }
 
-double Individual::Evaluate()
+double Individual::EvaluateOriginal()
 {
 	double maximStress = SimulateAndGetMaximStress();
 	double value = MINIM_INDIVIDUAL_VALUE;
@@ -86,6 +86,37 @@ double Individual::Evaluate()
 	value = (pow((GetNumberOfRemovedElements() + 1), 2)) * stressHeadroom;
 
 	return value;
+}
+
+namespace FitnessWeights {
+	const double ALPHA_CUBES = 0.7;
+	const double BETA_STRESS = 0.3;
+}
+
+double Individual::EvaluateWeightedSum()
+{
+	double maximStress = SimulateAndGetMaximStress();
+	double value = MINIM_INDIVIDUAL_VALUE;
+
+	if (maximStress >= m_maximStress || maximStress < EPSILON_STRESS)
+	{
+		return value;
+	}
+
+	double stressHeadroom = m_maximStress - maximStress;
+
+	double normalizedStress = stressHeadroom / m_maximStress;
+	double normalizedCubes = static_cast<double>(GetNumberOfRemovedElements()) / m_initialGenes.size();
+
+	value = FitnessWeights::ALPHA_CUBES * normalizedStress +
+	FitnessWeights::BETA_STRESS * normalizedCubes;
+
+	return value;
+}
+
+double Individual::Evaluate()
+{
+	return EvaluateWeightedSum();
 }
 
 void Individual::Crossover(IIndividual& other)

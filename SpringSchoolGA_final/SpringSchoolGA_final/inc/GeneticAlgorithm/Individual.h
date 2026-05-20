@@ -34,6 +34,8 @@ public:
 
 	const std::shared_ptr<Building> GetBuilding() const;
 
+	double EvaluateOriginal();
+	double EvaluateWeightedSum();
 	double Evaluate() override;
 
 	void Crossover(IIndividual& other) override;
