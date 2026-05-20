@@ -306,6 +306,13 @@ __pycache__/
 *.pyc
 /python/env/*
 
+# Streamlit
+.streamlit/
+.streamlit/secrets.toml
+.streamlit/config.toml
+.streamlit/credentials.toml
+.streamlit/cache/
+
 # Cake - Uncomment if you are using it
 # tools/**
 # !tools/packages.config
