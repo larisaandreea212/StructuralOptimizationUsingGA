@@ -1,1 +1,41 @@
-[]
+[
+  {
+    "experiment_id": "exp-001",
+    "name": "Experiment 1",
+    "created_at": "2026-05-20T22:19:35",
+    "source": "run",
+    "fitness_function": "WeightedSum",
+    "selection_method": "Roulette",
+    "crossover_method": "SinglePoint",
+    "impact_notes": "",
+    "ga_csv_path": "ui\\experiments\\exp-001_20260520_221935_individual_values.csv",
+    "profiling_csv_path": "",
+    "runtime_seconds": 113.2616
+  },
+  {
+    "experiment_id": "exp-002",
+    "name": "Experiment 2",
+    "created_at": "2026-05-20T22:27:22",
+    "source": "run",
+    "fitness_function": "WeightedSum",
+    "selection_method": "Roulette",
+    "crossover_method": "SinglePoint",
+    "impact_notes": "",
+    "ga_csv_path": "ui\\experiments\\exp-002_20260520_222722_individual_values.csv",
+    "profiling_csv_path": "",
+    "runtime_seconds": 89.8753
+  },
+  {
+    "experiment_id": "exp-003",
+    "name": "Experiment 3",
+    "created_at": "2026-05-20T22:29:57",
+    "source": "run",
+    "fitness_function": "WeightedSum",
+    "selection_method": "Roulette",
+    "crossover_method": "SinglePoint",
+    "impact_notes": "",
+    "ga_csv_path": "ui\\experiments\\exp-003_20260520_222957_individual_values.csv",
+    "profiling_csv_path": "",
+    "runtime_seconds": 118.8465
+  }
+]
