@@ -256,20 +256,65 @@ def sidebar_settings_form(current_settings: Dict[str, float]) -> Dict[str, float
     return updated
 
 
+def normalize_to_group_max(series: pd.Series) -> pd.Series:
+    """Map values to [0, 1] as ratio of the group maximum (0.78 vs 0.84 max => 0.93 vs 1.0)."""
+    vmax = series.max()
+    if vmax <= 0:
+        return pd.Series(0.0, index=series.index)
+    return series / vmax
+
+
+def add_normalized_fitness_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Display-only: scale by max VALUE within each fitness_function (not per-experiment min-max)."""
+    if df.empty:
+        return df
+
+    plot_df = df.copy()
+    plot_df["VALUE_RAW"] = plot_df["VALUE"]
+    plot_df["VALUE_NORM"] = plot_df.groupby("fitness_function")["VALUE"].transform(normalize_to_group_max)
+    plot_df["VALUE_PCT_OF_GROUP_MAX"] = plot_df["VALUE_NORM"] * 100.0
+    return plot_df
+
+
+def add_normalized_final_fitness(latest_df: pd.DataFrame) -> pd.DataFrame:
+    """Display-only: final fitness as ratio of max within each fitness_function group."""
+    if latest_df.empty:
+        return latest_df
+
+    plot_df = latest_df.copy()
+    plot_df["VALUE_RAW"] = plot_df["VALUE"]
+    plot_df["VALUE_NORM"] = plot_df.groupby("fitness_function")["VALUE"].transform(normalize_to_group_max)
+    plot_df["VALUE_PCT_OF_GROUP_MAX"] = plot_df["VALUE_NORM"] * 100.0
+    return plot_df
+
+
 def render_ga_comparison(experiments_df: pd.DataFrame) -> None:
     st.subheader("Fitness Evolution Across Experiments")
     if experiments_df.empty:
         st.info("No experiments saved yet.")
         return
 
+    plot_df = add_normalized_fitness_columns(experiments_df)
+    st.caption(
+        "Curves: VALUE / max within same fitness function (0.78 vs max 0.84 → 0.93, not forced to 1.0). "
+        "Hover: VALUE_RAW and VALUE_PCT_OF_GROUP_MAX."
+    )
+
     fig = px.line(
-        experiments_df,
+        plot_df,
         x="EPOCH",
-        y="VALUE",
+        y="VALUE_NORM",
         color="name",
         markers=True,
-        hover_data=["fitness_function", "selection_method", "crossover_method"],
-        title="Fitness per Epoch",
+        hover_data=[
+            "fitness_function",
+            "selection_method",
+            "crossover_method",
+            "VALUE_RAW",
+            "VALUE_PCT_OF_GROUP_MAX",
+        ],
+        labels={"VALUE_NORM": "Ratio to group max (0-1)", "EPOCH": "Epoch"},
+        title="Fitness per Epoch (ratio to group max)",
     )
     st.plotly_chart(fig, use_container_width=True)
 
@@ -281,16 +326,24 @@ def render_method_impact(experiments_df: pd.DataFrame) -> None:
         return
 
     latest_per_exp = experiments_df.sort_values("EPOCH").groupby("name", as_index=False).tail(1)
+    latest_per_exp = add_normalized_final_fitness(latest_per_exp)
+
+    st.caption(
+        "Bars: VALUE / max in same fitness function (e.g. 0.78 → 93% if group max is 0.84). "
+        "Only the true group maximum reaches 1.0."
+    )
 
     c1, c2 = st.columns(2)
     with c1:
         fig_fitness = px.bar(
             latest_per_exp,
             x="fitness_function",
-            y="VALUE",
+            y="VALUE_NORM",
             color="name",
             barmode="group",
-            title="Final Fitness by Fitness Function",
+            hover_data=["VALUE_RAW", "VALUE_PCT_OF_GROUP_MAX", "selection_method", "crossover_method"],
+            labels={"VALUE_NORM": "Normalized vs group max (0-1)"},
+            title="Final Fitness by Fitness Function (normalized per type)",
         )
         st.plotly_chart(fig_fitness, use_container_width=True)
     with c2:
@@ -300,10 +353,12 @@ def render_method_impact(experiments_df: pd.DataFrame) -> None:
         fig_combo = px.bar(
             latest_per_exp,
             x="selection_crossover",
-            y="VALUE",
+            y="VALUE_NORM",
             color="name",
             barmode="group",
-            title="Final Fitness by Selection/Crossover",
+            hover_data=["VALUE_RAW", "VALUE_PCT_OF_GROUP_MAX", "fitness_function"],
+            labels={"VALUE_NORM": "Normalized vs group max (0-1)"},
+            title="Final Fitness by Selection/Crossover (normalized per fitness type)",
         )
         st.plotly_chart(fig_combo, use_container_width=True)
 
@@ -510,6 +565,10 @@ def main() -> None:
             st.success(f"Imported experiment saved: {new_experiment.name}")
 
     st.markdown("### 3) Graphs")
+    st.caption(
+        "Charts: ratio to group max per fitness function (display only). "
+        "Re-run GA after ProductHeadroom change for new C++ scale (~0–100)."
+    )
     df = build_experiments_dataframe(experiments)
     render_ga_comparison(df)
     render_method_impact(df)

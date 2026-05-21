@@ -1,3 +1,5 @@
+#include <limits>
+
 #include <GeneticAlgorithm/SelectionStrategy.h>
 #include <Services/RandomNumbersGenerator.h>
 #include <Services/constants.h>
@@ -70,7 +72,7 @@ void SelectionStrategy::SelectionTournament(SelectionContext& context, int tourn
 	for (size_t selectionIndex = 0; selectionIndex < context.populationSize; ++selectionIndex)
 	{
 		std::shared_ptr<IIndividual> bestIndividual = nullptr;
-		double bestFitness = -1.0;
+		double bestFitness = std::numeric_limits<double>::lowest();
 
 		for (int tournamentIndex = 0; tournamentIndex < tournamentSize; ++tournamentIndex)
 		{

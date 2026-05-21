@@ -20,24 +20,32 @@ double FitnessStrategy::Evaluate(Individual& individual, FitnessType type)
 
 double FitnessStrategy::EvaluateProductHeadroom(Individual& individual)
 {
-	double maximStress = individual.SimulateAndGetMaximStress();
+	const double simulatedStress = individual.SimulateAndGetMaximStress();
+	const double allowedMaxStress = individual.GetMaximStress();
 
-	if (maximStress >= individual.GetMaximStress() || maximStress < EPSILON_STRESS)
+	if (simulatedStress >= allowedMaxStress || simulatedStress < EPSILON_STRESS)
 	{
 		return MINIM_INDIVIDUAL_VALUE;
 	}
 
-	double stressHeadroom = individual.GetMaximStress() - maximStress;
-	int removedElements = individual.GetNumberOfRemovedElements();
+	// fitness = (n_removed + 1)^2 * (sigma_max_allowed - sigma_simulated) / sigma_max_allowed
+	const double stressHeadroom = allowedMaxStress - simulatedStress;
+	const int removedElements = individual.GetNumberOfRemovedElements();
+	const int totalGenes = individual.GetTotalGeneCount();
 
-	return std::pow(removedElements + 1, 2) * stressHeadroom;
+	const double massFactor = std::pow(
+		static_cast<double>(removedElements + 1) / static_cast<double>(totalGenes + 1), 2);
+	const double safetyFactor = stressHeadroom / allowedMaxStress;
+
+	return 100.0 * massFactor * safetyFactor;
 }
 
 double FitnessStrategy::EvaluateWeightedSum(Individual& individual)
 {
-	double maximStress = individual.SimulateAndGetMaximStress();
+	const double simulatedStress = individual.SimulateAndGetMaximStress();
+	const double allowedMaxStress = individual.GetMaximStress();
 
-	if (maximStress >= individual.GetMaximStress() || maximStress < EPSILON_STRESS)
+	if (simulatedStress >= allowedMaxStress || simulatedStress < EPSILON_STRESS)
 	{
 		return MINIM_INDIVIDUAL_VALUE;
 	}
@@ -49,29 +57,41 @@ double FitnessStrategy::EvaluateWeightedSum(Individual& individual)
 	int removedElements = individual.GetNumberOfRemovedElements();
 
 	double massScore = static_cast<double>(removedElements) / static_cast<double>(totalGenes);
-	double safetyScore = 1.0 - (maximStress / individual.GetMaximStress());
+	double safetyScore = 1.0 - (simulatedStress / allowedMaxStress);
 
 	return wMass * massScore + wSafety * safetyScore;
 }
 
 double FitnessStrategy::EvaluatePenalty(Individual& individual)
 {
-	double maximStress = individual.SimulateAndGetMaximStress();
-	int removedElements = individual.GetNumberOfRemovedElements();
+	const double simulatedStress = individual.SimulateAndGetMaximStress();
+	const double allowedMaxStress = individual.GetMaximStress();
 
-	const double penaltyLambda = 1e6;
-	double baseFitness = static_cast<double>(removedElements);
-
-	if (maximStress >= individual.GetMaximStress())
+	if (simulatedStress < EPSILON_STRESS)
 	{
-		double violation = maximStress - individual.GetMaximStress();
-		return (baseFitness - penaltyLambda * violation * violation) * 0.01;
+		return MINIM_INDIVIDUAL_VALUE;
 	}
 
-	if (maximStress < EPSILON_STRESS)
+	const size_t initialGeneCount = individual.m_initialGenes.size();
+	if (initialGeneCount == 0)
 	{
-		return MINIM_INDIVIDUAL_VALUE * 0.01;
+		return MINIM_INDIVIDUAL_VALUE;
 	}
 
-	return baseFitness * 0.01;
+	double ratioRemoved = static_cast<double>(individual.GetNumberOfRemovedElements()) / static_cast<double>(initialGeneCount);
+	double baseReward = 100.0 * ratioRemoved;
+	double value;
+
+	if (simulatedStress <= allowedMaxStress)
+	{
+		double ratioStress = (allowedMaxStress - simulatedStress) / allowedMaxStress;
+		value = baseReward + (10.0 * ratioStress);
+	}
+	else
+	{
+		double violation = (simulatedStress - allowedMaxStress) / allowedMaxStress;
+		value = baseReward - (200.0 * std::pow(violation, 2));
+	}
+
+	return (value < MINIM_INDIVIDUAL_VALUE) ? MINIM_INDIVIDUAL_VALUE : value;
 }
