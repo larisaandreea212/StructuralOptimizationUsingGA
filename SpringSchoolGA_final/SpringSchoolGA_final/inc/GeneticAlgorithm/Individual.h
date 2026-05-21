@@ -7,6 +7,7 @@
 #include <fea/ChMesh.h>
 
 #include <GeneticAlgorithm/IIndividual.h>
+#include <GeneticAlgorithm/GATypes.h>
 
 #include <GraphicalObjects/Building.h>
 
@@ -18,6 +19,8 @@
 
 class Individual : public IIndividual
 {
+	friend class FitnessStrategy;
+
 public:
 	Individual(int sizeOx, int sizeOy, int sizeOz, double elementSize);
 	Individual(int sizeOx, int sizeOy, int sizeOz, double elementSize, const std::vector<bool>& cubesExistence);
@@ -31,11 +34,11 @@ public:
 	~Individual() = default;
 
 	void SetMaximStress(double maximStress);
+	void SetFitnessType(FitnessType fitnessType);
+	void SetCrossoverType(CrossoverType crossoverType);
 
 	const std::shared_ptr<Building> GetBuilding() const;
 
-	double EvaluateOriginal();
-	double EvaluateWeightedSum();
 	double Evaluate() override;
 
 	void Crossover(IIndividual& other) override;
@@ -48,9 +51,15 @@ public:
 	static std::shared_ptr<Building> CreateBuildingFromDetails(int sizeOx, int sizeOy, int sizeOz,
 		double elementSize, const std::vector<bool>& cubesExistence);
 
-private:
-	int GetNumberOfRemovedElements();
+	double GetMaximStress() const;
+	int GetNumberOfRemovedElements() const;
+	int GetTotalGeneCount() const;
+	const std::vector<bool>& GetCubesExistence() const;
+	void ApplyCubesExistence(const std::vector<bool>& cubesExistence);
+
 	double SimulateAndGetMaximStress();
+
+private:
 	bool IsOnTopLayer(size_t possition);
 
 private:
@@ -61,6 +70,9 @@ private:
 	int m_sizeOy;
 	int m_sizeOz;
 	double m_elementSize;
+
+	FitnessType m_fitnessType;
+	CrossoverType m_crossoverType;
 
 	std::vector<bool> m_initialGenes;
 };

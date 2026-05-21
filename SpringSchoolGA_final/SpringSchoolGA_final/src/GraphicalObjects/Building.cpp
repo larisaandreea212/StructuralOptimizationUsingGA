@@ -60,7 +60,7 @@ const std::shared_ptr<chrono::fea::ChMesh> Building::GetMesh() const
 	return m_mesh;
 }
 
-const std::vector<bool> Building::GetCubesExistence() const
+const std::vector<bool>& Building::GetCubesExistence() const
 {
 	return m_cubesExistence;
 }

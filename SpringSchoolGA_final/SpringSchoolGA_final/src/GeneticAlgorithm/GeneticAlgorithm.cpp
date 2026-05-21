@@ -1,14 +1,17 @@
 #include <GeneticAlgorithm/GeneticAlgorithm.h>
+#include <GeneticAlgorithm/SelectionStrategy.h>
 
 GeneticAlgorithm::GeneticAlgorithm(
 	std::function<IIndividual* ()> createIndividual,
 	size_t populationSize, size_t numberOfEpochs,
-	double crossoverProbabillity, double mutationProbability) :
+	double crossoverProbabillity, double mutationProbability,
+	SelectionType selectionType) :
 	m_createIndividual{ createIndividual },
 	m_populationSize{ populationSize },
 	m_numberOfEpochs{ numberOfEpochs },
 	m_crossoverProbability{ crossoverProbabillity },
-	m_mutationProbability{ mutationProbability }
+	m_mutationProbability{ mutationProbability },
+	m_selectionType{ selectionType }
 {
 }
 
@@ -68,84 +71,15 @@ std::map<IIndividual*, double> GeneticAlgorithm::CalculateFitnessValues()
 	return fitnessValues;
 }
 
-double GeneticAlgorithm::CalculateSumOfFitnessValues()
-{
-	double sum{};
-	for (const auto& individual : m_workingPopulation)
-	{
-		sum += m_fitnessValues[individual.get()];
-	}
-
-	return sum;
-}
-
-std::vector<double> GeneticAlgorithm::CalculateProbabilityOfSelection()
-{
-	std::vector<double> probabilityOfSelectionVector;
-	double sum = CalculateSumOfFitnessValues();
-
-	for (const auto& individual : m_workingPopulation)
-	{
-		probabilityOfSelectionVector.emplace_back(m_fitnessValues[individual.get()] / sum);
-	}
-
-	return probabilityOfSelectionVector;
-}
-
-std::vector<double> GeneticAlgorithm::CalcutateCumulativeProbabilityOfSelection()
-{
-	std::vector<double> cumulativeProbabilityOfSelectionVector;
-	std::vector<double> probabilityOfSelectionVector = CalculateProbabilityOfSelection();
-
-	for (int currentIndividualIndex = 0; currentIndividualIndex < m_populationSize; ++currentIndividualIndex)
-	{
-		double probability{};
-
-		for (int index = 0; index <= currentIndividualIndex; ++index)
-		{
-			probability += probabilityOfSelectionVector[index];
-		}
-
-		cumulativeProbabilityOfSelectionVector.emplace_back(probability);
-	}
-
-	return cumulativeProbabilityOfSelectionVector;
-}
-
 void GeneticAlgorithm::Selection()
 {
-	std::vector<std::shared_ptr<IIndividual>> newPopulation;
-
-	std::vector<double> cumulativeProbabilityOfSelectionVector = CalcutateCumulativeProbabilityOfSelection();
-	std::vector<double> randomNumbers = RandomNumbersGenerator::GenerateRealNumbers(LOWER_BOUND, UPPER_BOUND, m_populationSize);
-
-	for (const auto& randomNumber : randomNumbers)
-	{
-		if (IsGraterThan(randomNumber, LOWER_BOUND) &&
-			IsLessThanOrEqualTo(randomNumber, cumulativeProbabilityOfSelectionVector[0]))
-		{
-			newPopulation.push_back(m_workingPopulation[0]);
-			continue;
-		}
-
-		for (size_t probabilityIndex = 0; probabilityIndex < cumulativeProbabilityOfSelectionVector.size() - 1; ++probabilityIndex)
-		{
-			if (IsGraterThan(randomNumber, cumulativeProbabilityOfSelectionVector[probabilityIndex]) &&
-				IsLessThanOrEqualTo(randomNumber, cumulativeProbabilityOfSelectionVector[probabilityIndex + 1]))
-			{
-				newPopulation.push_back(m_workingPopulation[probabilityIndex + 1]);
-				break;
-			}
-		}
-	}
-
-	m_workingPopulation = newPopulation;
+	SelectionContext context{ m_workingPopulation, m_fitnessValues, m_populationSize };
+	SelectionStrategy::Selection(context, m_selectionType);
 }
 
 void GeneticAlgorithm::Crossover()
 {
 	std::vector<std::shared_ptr<IIndividual>> selectedPopulationForCrossover;
-	std::vector<std::shared_ptr<IIndividual>> newPopulation;
 
 	std::vector<double> randomNumbers = RandomNumbersGenerator::GenerateRealNumbers(LOWER_BOUND, UPPER_BOUND, m_populationSize);
 
@@ -174,16 +108,6 @@ void GeneticAlgorithm::Mutation()
 	{
 		individual->Mutation(m_mutationProbability);
 	}
-}
-
-bool GeneticAlgorithm::IsGraterThan(double value, double lowerBound) const
-{
-	return value > lowerBound;
-}
-
-bool GeneticAlgorithm::IsLessThanOrEqualTo(double value, double upperBound) const
-{
-	return value <= upperBound;
 }
 
 void GeneticAlgorithm::WriteWinners(int epoch)

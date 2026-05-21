@@ -1,7 +1,10 @@
 #include <GeneticAlgorithm/Individual.h>
+#include <GeneticAlgorithm/FitnessStrategy.h>
+#include <GeneticAlgorithm/CrossoverStrategy.h>
 
 Individual::Individual(int sizeOx, int sizeOy, int sizeOz, double elementSize) :
-	m_sizeOx{ sizeOx }, m_sizeOy{ sizeOy }, m_sizeOz{ sizeOz }, m_elementSize{ elementSize }
+	m_sizeOx{ sizeOx }, m_sizeOy{ sizeOy }, m_sizeOz{ sizeOz }, m_elementSize{ elementSize },
+	m_fitnessType{ FitnessType::ProductHeadroom }, m_crossoverType{ CrossoverType::SinglePoint }
 {
 	m_building = std::make_shared<Building>(m_sizeOx, m_sizeOy, m_sizeOz, m_elementSize);
 	m_building->Build();
@@ -11,7 +14,8 @@ Individual::Individual(int sizeOx, int sizeOy, int sizeOz, double elementSize) :
 }
 
 Individual::Individual(int sizeOx, int sizeOy, int sizeOz, double elementSize, const std::vector<bool>& cubesExistence) :
-	m_sizeOx{ sizeOx }, m_sizeOy{ sizeOy }, m_sizeOz{ sizeOz }, m_elementSize{ elementSize }
+	m_sizeOx{ sizeOx }, m_sizeOy{ sizeOy }, m_sizeOz{ sizeOz }, m_elementSize{ elementSize },
+	m_fitnessType{ FitnessType::ProductHeadroom }, m_crossoverType{ CrossoverType::SinglePoint }
 {
 	m_building = std::make_shared<Building>(m_sizeOx, m_sizeOy, m_sizeOz, m_elementSize);
 	m_building->Build();
@@ -42,6 +46,9 @@ Individual& Individual::operator=(const Individual& another)
 		m_elementSize = another.m_elementSize;
 		m_maximStress = another.m_maximStress;
 		m_building = another.m_building;
+		m_fitnessType = another.m_fitnessType;
+		m_crossoverType = another.m_crossoverType;
+		m_initialGenes = another.m_initialGenes;
 	}
 	return *this;
 }
@@ -57,6 +64,9 @@ Individual& Individual::operator=(Individual&& another) noexcept
 		m_elementSize = std::exchange(another.m_elementSize, resetValue);
 		m_maximStress = std::exchange(another.m_maximStress, resetValue);
 		m_building = std::exchange(another.m_building, nullptr);
+		m_fitnessType = std::exchange(another.m_fitnessType, FitnessType::ProductHeadroom);
+		m_crossoverType = std::exchange(another.m_crossoverType, CrossoverType::SinglePoint);
+		m_initialGenes = std::exchange(another.m_initialGenes, std::vector<bool>());
 	}
 	return *this;
 }
@@ -66,81 +76,67 @@ void Individual::SetMaximStress(double maximStress)
 	m_maximStress = maximStress;
 }
 
+void Individual::SetFitnessType(FitnessType fitnessType)
+{
+	m_fitnessType = fitnessType;
+}
+
+void Individual::SetCrossoverType(CrossoverType crossoverType)
+{
+	m_crossoverType = crossoverType;
+}
+
 const std::shared_ptr<Building> Individual::GetBuilding() const
 {
 	return m_building;
 }
 
-double Individual::EvaluateOriginal()
+double Individual::GetMaximStress() const
 {
-	double maximStress = SimulateAndGetMaximStress();
-	double value = MINIM_INDIVIDUAL_VALUE;
-
-	if (maximStress >= m_maximStress || maximStress < EPSILON_STRESS)
-	{
-		return value;
-	}
-
-	double stressHeadroom = m_maximStress - maximStress;
-
-	value = (pow((GetNumberOfRemovedElements() + 1), 2)) * stressHeadroom;
-
-	return value;
+	return m_maximStress;
 }
 
-namespace FitnessWeights {
-	const double ALPHA_CUBES = 0.7;
-	const double BETA_STRESS = 0.3;
-}
-
-double Individual::EvaluateWeightedSum()
+int Individual::GetNumberOfRemovedElements() const
 {
-	double maximStress = SimulateAndGetMaximStress();
-	double value = MINIM_INDIVIDUAL_VALUE;
+	int numberOfRemovedElements = 0;
+	const auto& cubesExistence = m_building->GetCubesExistence();
 
-	if (maximStress >= m_maximStress || maximStress < EPSILON_STRESS)
+	for (const auto cubeExistence : cubesExistence)
 	{
-		return value;
+		if (!cubeExistence)
+		{
+			numberOfRemovedElements++;
+		}
 	}
 
-	double stressHeadroom = m_maximStress - maximStress;
+	return numberOfRemovedElements;
+}
 
-	double normalizedStress = stressHeadroom / m_maximStress;
-	double normalizedCubes = static_cast<double>(GetNumberOfRemovedElements()) / m_initialGenes.size();
+int Individual::GetTotalGeneCount() const
+{
+	return static_cast<int>(m_building->GetCubesExistence().size());
+}
 
-	value = FitnessWeights::ALPHA_CUBES * normalizedStress +
-	FitnessWeights::BETA_STRESS * normalizedCubes;
+const std::vector<bool>& Individual::GetCubesExistence() const
+{
+	return m_building->GetCubesExistence();
+}
 
-	return value;
+void Individual::ApplyCubesExistence(const std::vector<bool>& cubesExistence)
+{
+	m_building->EliminateCubesBasedOnCubesExistence(cubesExistence);
+	m_building->AddCubesBasedOnCubesExistence(cubesExistence);
 }
 
 double Individual::Evaluate()
 {
-	return EvaluateWeightedSum();
+	return FitnessStrategy::Evaluate(*this, m_fitnessType);
 }
 
 void Individual::Crossover(IIndividual& other)
 {
-	size_t numberOfGenes = m_building->GetCubesExistence().size();
-
-	int randomNumber = RandomNumbersGenerator::GenerateIntegerNumberInRange(1, numberOfGenes - 1);
-
-	Individual& otherIndividual = dynamic_cast<Individual&> (other);
-
-	std::vector<bool> newCubesExistence = m_building->GetCubesExistence();
-	std::vector<bool> newOtherCubesExistence = otherIndividual.m_building->GetCubesExistence();
-
-	for (size_t index = randomNumber; index < numberOfGenes; ++index)
-	{
-		newCubesExistence[index] = otherIndividual.m_building->GetCubesExistence()[index];
-		newOtherCubesExistence[index] = m_building->GetCubesExistence()[index];
-	}
-
-	m_building->EliminateCubesBasedOnCubesExistence(newCubesExistence);
-	m_building->AddCubesBasedOnCubesExistence(newCubesExistence);
-
-	otherIndividual.m_building->EliminateCubesBasedOnCubesExistence(newOtherCubesExistence);
-	otherIndividual.m_building->AddCubesBasedOnCubesExistence(newOtherCubesExistence);
+	Individual& otherIndividual = dynamic_cast<Individual&>(other);
+	CrossoverStrategy::Crossover(*this, otherIndividual, m_crossoverType);
 }
 
 void Individual::Mutation(double mutationProbability)
@@ -194,18 +190,6 @@ std::shared_ptr<Building> Individual::CreateBuildingFromDetails(int sizeOx, int 
 	building->EliminateCubesBasedOnCubesExistence(cubesExistence);
 
 	return building;
-}
-
-int Individual::GetNumberOfRemovedElements()
-{
-	int numberOfRemovedElements = 0;
-	std::vector<bool> cubesExistence = m_building->GetCubesExistence();
-
-	for (const auto cubeExistence : cubesExistence)
-		if (!cubeExistence)
-			numberOfRemovedElements++;
-
-	return numberOfRemovedElements;
 }
 
 double Individual::SimulateAndGetMaximStress()

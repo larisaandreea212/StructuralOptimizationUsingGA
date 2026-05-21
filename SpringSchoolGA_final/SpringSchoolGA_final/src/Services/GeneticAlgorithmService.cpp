@@ -12,7 +12,8 @@ void GeneticAlgorithmService::RunWithConfigValues()
 		AlgorithmSettings::GetInstance()->GetNumberOfIndividuals(),
 		AlgorithmSettings::GetInstance()->GetNumberOfEpochs(),
 		AlgorithmSettings::GetInstance()->GetCrossoverProbability(),
-		AlgorithmSettings::GetInstance()->GetMutationProbability());
+		AlgorithmSettings::GetInstance()->GetMutationProbability(),
+		AlgorithmSettings::GetInstance()->GetSelectionType());
 
 	geneticAlgorithm.Run();
 }
@@ -36,7 +37,8 @@ void GeneticAlgorithmService::RunWithCustomFirstIndividual()
 		AlgorithmSettings::GetInstance()->GetNumberOfIndividuals(),
 		AlgorithmSettings::GetInstance()->GetNumberOfEpochs(),
 		AlgorithmSettings::GetInstance()->GetCrossoverProbability(),
-		AlgorithmSettings::GetInstance()->GetMutationProbability());
+		AlgorithmSettings::GetInstance()->GetMutationProbability(),
+		AlgorithmSettings::GetInstance()->GetSelectionType());
 
 	geneticAlgorithm.Run();
 }

@@ -70,7 +70,60 @@ const double AlgorithmSettings::GetDensity() const
 	return m_density;
 }
 
-AlgorithmSettings::AlgorithmSettings()
+FitnessType AlgorithmSettings::GetFitnessType() const
+{
+	switch (m_fitnessType)
+	{
+	case 1:
+		return FitnessType::WeightedSum;
+	case 2:
+		return FitnessType::Penalty;
+	case 0:
+	default:
+		return FitnessType::ProductHeadroom;
+	}
+}
+
+SelectionType AlgorithmSettings::GetSelectionType() const
+{
+	switch (m_selectionType)
+	{
+	case 1:
+		return SelectionType::Tournament;
+	case 0:
+	default:
+		return SelectionType::Roulette;
+	}
+}
+
+CrossoverType AlgorithmSettings::GetCrossoverType() const
+{
+	switch (m_crossoverType)
+	{
+	case 1:
+		return CrossoverType::Uniform;
+	case 0:
+	default:
+		return CrossoverType::SinglePoint;
+	}
+}
+
+AlgorithmSettings::AlgorithmSettings() :
+	m_numbeOfEpochs{ 5 },
+	m_numberOfIndividuals{ 50 },
+	m_oxSize{ 10 },
+	m_oySize{ 5 },
+	m_ozSize{ 3 },
+	m_elementSize{ 0.1 },
+	m_crossoverProbability{ 0.5 },
+	m_mutationProbability{ 0.01 },
+	m_maximumStress{ 4.5e8 },
+	m_youngModulus{ 1e21 },
+	m_poissonRatio{ 0.3 },
+	m_density{ 7800.0 },
+	m_fitnessType{ 0 },
+	m_selectionType{ 0 },
+	m_crossoverType{ 0 }
 {
 	std::ifstream file;
 
@@ -132,6 +185,18 @@ AlgorithmSettings::AlgorithmSettings()
 			else if (variable == "DENSITY")
 			{
 				m_density = std::stod(value);
+			}
+			else if (variable == "FITNESS_TYPE")
+			{
+				m_fitnessType = atoi(value.c_str());
+			}
+			else if (variable == "SELECTION_TYPE")
+			{
+				m_selectionType = atoi(value.c_str());
+			}
+			else if (variable == "CROSSOVER_TYPE")
+			{
+				m_crossoverType = atoi(value.c_str());
 			}
 		}
 	}

@@ -6,6 +6,8 @@ std::function<IIndividual* ()> UtilFunctions::CreateIndividualFunction(int sizeO
 	return [sizeOx, sizeOy, sizeOz, elementSize, maximStress]() {
 		Individual* individual = new Individual(sizeOx, sizeOy, sizeOz, elementSize);
 		individual->SetMaximStress(maximStress);
+		individual->SetFitnessType(AlgorithmSettings::GetInstance()->GetFitnessType());
+		individual->SetCrossoverType(AlgorithmSettings::GetInstance()->GetCrossoverType());
 
 		return individual;
 	};
@@ -17,6 +19,8 @@ std::function<IIndividual* ()> UtilFunctions::CreateIndividualFromFileFunction(i
 	return [sizeOx, sizeOy, sizeOz, elementSize, cubesExistence, maximStress]() {
 		Individual* individual = new Individual(sizeOx, sizeOy, sizeOz, elementSize, cubesExistence);
 		individual->SetMaximStress(maximStress);
+		individual->SetFitnessType(AlgorithmSettings::GetInstance()->GetFitnessType());
+		individual->SetCrossoverType(AlgorithmSettings::GetInstance()->GetCrossoverType());
 
 		return individual;
 	};

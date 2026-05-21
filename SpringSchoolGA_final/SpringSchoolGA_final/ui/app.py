@@ -35,6 +35,25 @@ DEFAULT_SETTINGS = {
     "YOUNG_MODULUS": 1e21,
     "POISSON_RATIO": 0.3,
     "DENSITY": 7800.0,
+    "FITNESS_TYPE": 0,
+    "SELECTION_TYPE": 0,
+    "CROSSOVER_TYPE": 0,
+}
+
+FITNESS_OPTIONS = {
+    "ProductHeadroom": 0,
+    "WeightedSum": 1,
+    "Penalty": 2,
+}
+
+SELECTION_OPTIONS = {
+    "Roulette": 0,
+    "Tournament": 1,
+}
+
+CROSSOVER_OPTIONS = {
+    "SinglePoint": 0,
+    "Uniform": 1,
 }
 
 SETTINGS_ORDER = [
@@ -50,6 +69,9 @@ SETTINGS_ORDER = [
     "YOUNG_MODULUS",
     "POISSON_RATIO",
     "DENSITY",
+    "FITNESS_TYPE",
+    "SELECTION_TYPE",
+    "CROSSOVER_TYPE",
 ]
 
 
@@ -89,7 +111,16 @@ def load_settings(path: Path) -> Dict[str, float]:
             value = value.strip()
             if key not in parsed:
                 continue
-            if key in {"NUMBER_OF_EPOCHS", "NUMBER_OF_INDIVIDUALS", "OX_SIZE", "OY_SIZE", "OZ_SIZE"}:
+            if key in {
+                "NUMBER_OF_EPOCHS",
+                "NUMBER_OF_INDIVIDUALS",
+                "OX_SIZE",
+                "OY_SIZE",
+                "OZ_SIZE",
+                "FITNESS_TYPE",
+                "SELECTION_TYPE",
+                "CROSSOVER_TYPE",
+            }:
                 parsed[key] = int(float(value))
             else:
                 parsed[key] = float(value)
@@ -198,6 +229,30 @@ def sidebar_settings_form(current_settings: Dict[str, float]) -> Dict[str, float
     updated["DENSITY"] = st.sidebar.number_input(
         "Density", min_value=1.0, value=float(current_settings["DENSITY"]), step=1.0
     )
+
+    fitness_label = next(
+        (label for label, value in FITNESS_OPTIONS.items() if value == int(current_settings["FITNESS_TYPE"])),
+        "ProductHeadroom",
+    )
+    selection_label = next(
+        (label for label, value in SELECTION_OPTIONS.items() if value == int(current_settings["SELECTION_TYPE"])),
+        "Roulette",
+    )
+    crossover_label = next(
+        (label for label, value in CROSSOVER_OPTIONS.items() if value == int(current_settings["CROSSOVER_TYPE"])),
+        "SinglePoint",
+    )
+
+    updated["FITNESS_TYPE"] = FITNESS_OPTIONS[
+        st.sidebar.selectbox("Fitness function", list(FITNESS_OPTIONS.keys()), index=list(FITNESS_OPTIONS.keys()).index(fitness_label))
+    ]
+    updated["SELECTION_TYPE"] = SELECTION_OPTIONS[
+        st.sidebar.selectbox("Selection method", list(SELECTION_OPTIONS.keys()), index=list(SELECTION_OPTIONS.keys()).index(selection_label))
+    ]
+    updated["CROSSOVER_TYPE"] = CROSSOVER_OPTIONS[
+        st.sidebar.selectbox("Crossover method", list(CROSSOVER_OPTIONS.keys()), index=list(CROSSOVER_OPTIONS.keys()).index(crossover_label))
+    ]
+
     return updated
 
 
@@ -335,18 +390,31 @@ def main() -> None:
         executable_path_raw = st.text_input("GA executable path", value=executable_default)
         fitness_function = st.selectbox(
             "Fitness function label",
-            ["CurrentFitness", "WeightedSum", "Penalty", "Custom"],
+            list(FITNESS_OPTIONS.keys()),
+            index=int(updated_settings.get("FITNESS_TYPE", 0)),
         )
     with col_b:
-        selection_method = st.selectbox("Selection method label", ["Roulette", "Tournament", "Rank", "Custom"])
-        crossover_method = st.selectbox("Crossover method label", ["SinglePoint", "TwoPoint", "Uniform", "Custom"])
+        selection_method = st.selectbox(
+            "Selection method label",
+            list(SELECTION_OPTIONS.keys()),
+            index=int(updated_settings.get("SELECTION_TYPE", 0)),
+        )
+        crossover_method = st.selectbox(
+            "Crossover method label",
+            list(CROSSOVER_OPTIONS.keys()),
+            index=int(updated_settings.get("CROSSOVER_TYPE", 0)),
+        )
         impact_notes = st.text_area("Impact notes", placeholder="Why this variant should improve performance/results.")
 
     profiling_upload = st.file_uploader("Optional profiling CSV (columns: stage,seconds)", type=["csv"])
     run_clicked = st.button("Run GA and Save Experiment", type="primary")
 
     if run_clicked:
-        write_settings(SETTINGS_PATH, updated_settings)
+        run_settings = updated_settings.copy()
+        run_settings["FITNESS_TYPE"] = FITNESS_OPTIONS[fitness_function]
+        run_settings["SELECTION_TYPE"] = SELECTION_OPTIONS[selection_method]
+        run_settings["CROSSOVER_TYPE"] = CROSSOVER_OPTIONS[crossover_method]
+        write_settings(SETTINGS_PATH, run_settings)
         executable_path = Path(executable_path_raw)
 
         if not executable_path.exists():
@@ -401,10 +469,10 @@ def main() -> None:
     imp_col1, imp_col2, imp_col3 = st.columns(3)
     with imp_col1:
         import_name = st.text_input("Imported experiment name", value="")
-        import_fitness = st.selectbox("Imported fitness label", ["CurrentFitness", "WeightedSum", "Penalty", "Custom"], key="imp_fit")
+        import_fitness = st.selectbox("Imported fitness label", list(FITNESS_OPTIONS.keys()), key="imp_fit")
     with imp_col2:
-        import_selection = st.selectbox("Imported selection label", ["Roulette", "Tournament", "Rank", "Custom"], key="imp_sel")
-        import_crossover = st.selectbox("Imported crossover label", ["SinglePoint", "TwoPoint", "Uniform", "Custom"], key="imp_cross")
+        import_selection = st.selectbox("Imported selection label", list(SELECTION_OPTIONS.keys()), key="imp_sel")
+        import_crossover = st.selectbox("Imported crossover label", list(CROSSOVER_OPTIONS.keys()), key="imp_cross")
     with imp_col3:
         imported_ga_file = st.file_uploader("Upload GA values CSV", type=["csv"], key="ga_upload")
         imported_profile_file = st.file_uploader("Upload profiling CSV (optional)", type=["csv"], key="profile_upload")

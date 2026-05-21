@@ -30,7 +30,7 @@ public:
 	~Building() = default;
 
 	const std::shared_ptr<chrono::fea::ChMesh> GetMesh() const;
-	const std::vector<bool> GetCubesExistence() const;
+	const std::vector<bool>& GetCubesExistence() const;
 	const std::shared_ptr<chrono::ChSystemSMC> GetSystem() const;
 
 	void Build();

@@ -5,6 +5,7 @@
 #include <algorithm>
 
 #include <Services/constants.h>
+#include <GeneticAlgorithm/GATypes.h>
 
 class AlgorithmSettings
 {
@@ -24,6 +25,10 @@ public:
 	const double GetYoungModulus() const;
 	const double GetPoissonRatio() const;
 	const double GetDensity() const;
+
+	FitnessType GetFitnessType() const;
+	SelectionType GetSelectionType() const;
+	CrossoverType GetCrossoverType() const;
 
 private:
 	
@@ -48,4 +53,8 @@ private:
 	double m_youngModulus;
 	double m_poissonRatio;
 	double m_density;
+
+	int m_fitnessType;
+	int m_selectionType;
+	int m_crossoverType;
 };
